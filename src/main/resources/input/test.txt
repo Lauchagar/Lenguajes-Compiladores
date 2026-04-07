@@ -140,6 +140,8 @@ if (isZero( s*7+1-h/2 ))
 z := 2
 x := 3.8
 areaMax := triangleAreaMaximum( [0,x; 4.0,12; 2.5,3] ; [x,0; 6,0; z,2] )
+write(areaMax)
+
 
 #+ Validaciones semánticas - Variables duplicadas +#
 #+ varInt1 : Int     +#  // Error: Variable 'varInt1' ya fue declarada previamente
@@ -152,3 +154,25 @@ areaMax := triangleAreaMaximum( [0,x; 4.0,12; 2.5,3] ; [x,0; 6,0; z,2] )
 #+ varInt1 := "string"            +#  //Error: No se puede asignar String a variable Int
 #+ varStr1 := 123                 +#  // Error: No se puede asignar Int a variable String
 #+ varFloat1 := "texto"           +#  // Error: No se puede asignar String a variable Float
+
+
+
+
+
+#+ Pruebas de equalExpressions +#
+
+init {
+    varInt1, varInt2, contador : Int
+}
+
+varInt1 := 2
+varInt2 := 3
+contador := 5
+
+#+ Test 3: Usar en while - debería entrar porque 10 = 10 +#
+contador := 0
+while (equalExpressions(contador, 0))
+{
+    write("Test 3: Entrando al while con expresiones iguales")
+    contador := contador + 1
+}

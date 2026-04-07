@@ -787,14 +787,22 @@ arg_list ::= triangle:t1 SEMICOLON triangle:t2
         gen.addToken("0.5"); gen.addToken("*");
         gen.addToken(area1); gen.addToken(":=");
 
-        // Absoluto area1
+        // Absoluto area1: if area1 < 0 then area1 := area1 * -1
         gen.addToken(area1); gen.addToken("0"); gen.addToken("CMP");
-        gen.addToken("BLT"); 
-        int negPlaceholder = generatePlaceholder(); 
-        // Backpatching local usando el índice actual
-        IntermediateCodeGenerator.getInstance().backpatch(negPlaceholder, String.valueOf(IntermediateCodeGenerator.getInstance().getInstructionCount()));
+        gen.addToken("BLT");
+        int negPlaceholder = generatePlaceholder();
+        gen.addToken("BI");
+        int skipNegPlaceholder = generatePlaceholder();
+        IntermediateCodeGenerator.getInstance().backpatch(
+            negPlaceholder,
+            String.valueOf(IntermediateCodeGenerator.getInstance().getInstructionCount())
+        );
         gen.addToken(area1); gen.addToken("-1"); gen.addToken("*");
         gen.addToken(area1); gen.addToken(":=");
+        IntermediateCodeGenerator.getInstance().backpatch(
+            skipNegPlaceholder,
+            String.valueOf(IntermediateCodeGenerator.getInstance().getInstructionCount())
+        );
 
         // --- TRIÁNGULO 2
         String ux1 = "t_x1_2"; String uy1 = "t_y1_2";
@@ -817,13 +825,22 @@ arg_list ::= triangle:t1 SEMICOLON triangle:t2
         gen.addToken("0.5"); gen.addToken("*");
         gen.addToken(area2); gen.addToken(":=");
 
-        // Absoluto area2
+        // Absoluto area2: if area2 < 0 then area2 := area2 * -1
         gen.addToken(area2); gen.addToken("0"); gen.addToken("CMP");
         gen.addToken("BLT");
         int negPlaceholder2 = generatePlaceholder();
-        IntermediateCodeGenerator.getInstance().backpatch(negPlaceholder2, String.valueOf(IntermediateCodeGenerator.getInstance().getInstructionCount()));
+        gen.addToken("BI");
+        int skipNegPlaceholder2 = generatePlaceholder();
+        IntermediateCodeGenerator.getInstance().backpatch(
+            negPlaceholder2,
+            String.valueOf(IntermediateCodeGenerator.getInstance().getInstructionCount())
+        );
         gen.addToken(area2); gen.addToken("-1"); gen.addToken("*");
         gen.addToken(area2); gen.addToken(":=");
+        IntermediateCodeGenerator.getInstance().backpatch(
+            skipNegPlaceholder2,
+            String.valueOf(IntermediateCodeGenerator.getInstance().getInstructionCount())
+        );
 
         // --- MAX(area1, area2)
         String areaMax = "t_area_max";
