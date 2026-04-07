@@ -82,6 +82,10 @@ terminal ELSE;
 terminal WHILE;
 terminal IS_ZERO;
 terminal TRIANGLE_AREA_MAXIMUM;
+terminal FOR;
+terminal TO;
+terminal STEP;
+terminal NEXT;
 
 // Non Terminals
 non terminal program;
@@ -108,6 +112,11 @@ non terminal java.util.List coords;
 
 non terminal while_statement;
 non terminal if_statement;
+non terminal for_statement;
+non terminal java.util.List for_header;
+non terminal java.util.List for_startpart;
+non terminal String for_step_opt;
+non terminal String for_step_const;
 
 non terminal java.util.List<Integer> if_header;
 
@@ -148,6 +157,7 @@ sentence ::= read {: System.out.println("Sentencia = READ"); :};
 sentence ::= write {: System.out.println("Sentencia = WRITE"); :};
 sentence ::= if_statement {: System.out.println("Sentencia = IF"); :};
 sentence ::= while_statement {: System.out.println("Sentencia = WHILE"); :};
+sentence ::= for_statement {: System.out.println("Sentencia = FOR"); :};
 sentence ::= COMMENT {: System.out.println("Comentario"); :};
 
 // --- ESTRUCTURAS DE CONTROL ---
@@ -275,6 +285,129 @@ while_statement ::= while_header:header_info OPEN_BRACE marker_M:inicio_cuerpo s
                             backpatch(placeholder, fin_pos);
                         }
                     }
+                :};
+
+/* FOR estilo BASIC:
+   FOR i = expr TO expr [STEP cte]
+      sentence_list
+   NEXT i
+*/
+for_step_opt ::= STEP for_step_const:s {: RESULT = s; :};
+for_step_opt ::= {: RESULT = "1"; :};
+
+for_step_const ::= INTEGER_CONSTANT:i {: RESULT = i.toString(); :};
+for_step_const ::= FLOAT_CONSTANT:f {: RESULT = f.toString(); :};
+for_step_const ::= SUB INTEGER_CONSTANT:i {: RESULT = "-" + i.toString(); :};
+for_step_const ::= SUB FLOAT_CONSTANT:f {: RESULT = "-" + f.toString(); :};
+for_step_const ::= PLUS INTEGER_CONSTANT:i {: RESULT = i.toString(); :};
+for_step_const ::= PLUS FLOAT_CONSTANT:f {: RESULT = f.toString(); :};
+
+/* Parte inicial: FOR id = expr TO — emitir asignacion ANTES del limite,
+   para que el RPN quede (valor_inicial) id := y no mezcle con el TO. */
+for_startpart ::= FOR IDENTIFIER:id EQ expression:startType TO
+                {:
+                    System.out.println("FOR - Asignacion inicial");
+                    if (!lyc.compiler.files.SymbolTableGenerator.getInstance().isVariableDeclared(id.toString())) {
+                        throw new lyc.compiler.model.UnknownVariableException(
+                            "Variable de control del FOR '" + id + "' no fue declarada"
+                        );
+                    }
+                    String controlType = lyc.compiler.files.SymbolTableGenerator.getInstance().getVariableType(id.toString());
+                    if (!controlType.equals("Int") && !controlType.equals("Float")) {
+                        throw new lyc.compiler.model.TypeMismatchException(
+                            "La variable de control del FOR '" + id + "' debe ser numerica"
+                        );
+                    }
+                    if (!startType.equals("Int") && !startType.equals("Float")) {
+                        throw new lyc.compiler.model.TypeMismatchException(
+                            "La expresion inicial del FOR debe ser numerica"
+                        );
+                    }
+                    IntermediateCodeGenerator.getInstance().addToken(id.toString());
+                    IntermediateCodeGenerator.getInstance().addToken(":=");
+                    java.util.List<Object> info = new java.util.ArrayList<>();
+                    info.add(id.toString());
+                    info.add(controlType);
+                    RESULT = info;
+                :};
+
+for_header ::= for_startpart:startPart expression:endType for_step_opt:stepLiteral
+                {:
+                    System.out.println("FOR - Header");
+                    java.util.List startInfo = (java.util.List) startPart;
+                    String idStr = (String) startInfo.get(0);
+
+                    if (!endType.equals("Int") && !endType.equals("Float")) {
+                        throw new lyc.compiler.model.TypeMismatchException(
+                            "La expresion final del FOR debe ser numerica"
+                        );
+                    }
+
+                    double stepValue = Double.parseDouble(stepLiteral);
+                    if (stepValue == 0.0) {
+                        throw new RuntimeException("STEP no puede ser 0 en FOR");
+                    }
+
+                    IntermediateCodeGenerator gen = IntermediateCodeGenerator.getInstance();
+
+                    // limite superior/inferior: valor de endType ya esta en la polaca como ultimos tokens
+                    String forEndTemp = "t_for_end_" + getNextIndex();
+                    gen.addToken(forEndTemp);
+                    gen.addToken(":=");
+                    gen.addToken(stepLiteral);
+                    String forStepTemp = "t_for_step_" + getNextIndex();
+                    gen.addToken(forStepTemp);
+                    gen.addToken(":=");
+
+                    int loopStart = getNextIndex();
+
+                    gen.addToken(idStr);
+                    gen.addToken(forEndTemp);
+                    gen.addToken("CMP");
+                    if (stepValue > 0) {
+                        gen.addToken("BGT");
+                    } else {
+                        gen.addToken("BLT");
+                    }
+                    int exitPlaceholder = generatePlaceholder();
+
+                    java.util.List<Object> info = new java.util.ArrayList<>();
+                    info.add(idStr);
+                    info.add(forStepTemp);
+                    info.add(loopStart);
+                    info.add(exitPlaceholder);
+                    RESULT = info;
+                :};
+
+for_statement ::= for_header:header sentence_list NEXT IDENTIFIER:nextId
+                {:
+                    java.util.List info = (java.util.List) header;
+                    String controlId = (String) info.get(0);
+                    String stepTemp = (String) info.get(1);
+                    int loopStart = (Integer) info.get(2);
+                    int exitPlaceholder = (Integer) info.get(3);
+
+                    if (!controlId.equals(nextId.toString())) {
+                        throw new RuntimeException(
+                            "NEXT " + nextId + " no coincide con la variable de control FOR " + controlId
+                        );
+                    }
+
+                    IntermediateCodeGenerator gen = IntermediateCodeGenerator.getInstance();
+
+                    // Incremento/decremento: control := control + step
+                    gen.addToken(controlId);
+                    gen.addToken(stepTemp);
+                    gen.addToken("+");
+                    gen.addToken(controlId);
+                    gen.addToken(":=");
+
+                    // Volver al inicio del FOR
+                    gen.addToken("BI");
+                    gen.addToken(String.valueOf(loopStart));
+
+                    // Completar salida del FOR
+                    backpatch(exitPlaceholder, getNextIndex());
                 :};
 
 

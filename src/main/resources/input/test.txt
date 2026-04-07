@@ -7,172 +7,20 @@ init {
     s, h, contador : Int
 }
 
-#+ Asignacion a variables +#
+#+ Pruebas FOR (nuevo tema especial) +#
+a := 0
+write("FOR 1..5")
+FOR a = 1 TO 5
+    write(a)
+NEXT a
 
+write("FOR 1..10 STEP 2")
+FOR a = 1 TO 10 STEP 2
+    write(a)
+NEXT a
 
-varInt1 := 130814
-varInt1 := -130814
+write("FOR 10..1 STEP -3")
+FOR a = 10 TO 1 STEP -3
+    write(a)
+NEXT a
 
-varFloat1 := 99999.99
-varFloat1 := 99.
-varFloat1 := .9999
-
-varFloat1 := -99999.99
-varFloat1 := -99.
-varFloat1 := -.9999
-
-varStr1 := "aaaaaaaa"
-
-varInt2 := 4
-varFloat2 := varFloat1 * (varInt1 - 21) / 4
-varFloat3 := 1
-varFloat2 := 27 - varFloat3
-varFloat2 := varInt1 + 500
-varFloat2 := 34 * 3
-varFloat2 := varInt1 / varInt2
-varStr1 := "@sdADaSjfla%dfg"
-varStr1 := "asldk  fh sjf"
-
-#+ Comentario de prueba +#
-
-read(test)
-write(test)
-write("test")
-write("a es mas grande que b o c es mas grande que b")
-
-if (a > b)
-{
-    write("a es mas grande que b")
-}
-else
-{
-    write("a es mas chico o igual a b")
-}
-
-
-a := 1
-b := 1
-c := 2
-
-if (a > b AND c > b)
-{
-    write("a es mas grande que b y c es mas grande que b")
-}
-
-if (NOT a > b)
-{
-    write("a no es mas grande que b")
-}
-
-if (a > b OR c > b)
-{
-    write("a es mas grande que b o c es mas grande que b")
-}
-
-if (a > b)
-{
-    write("a es mas grande que b")
-}
-else
-{
-    write("a es mas chico o igual a b")
-}
-
-if (varFloat1 <= varFloat2 AND varInt1 >= varInt2)
-{
-    write("Condición compuesta AND")
-}
-
-a := 1
-b := 3
-while (a > b)
-{
-    write("a es mas grande que b")
-    a := a + 1
-}
-
-s := 3
-h := 44
-contador := 10
-
-while (isZero( contador - 10 ))
-{
-    write("El contador vale 10")
-    contador := contador - 1
-}
-
-if (isZero( s*7+1-h/2 ))
-{
-    write("La expresion es igual a cero")
-}
-
-
-
-#+ String mas de 50 caracteres +#
-
-#+ varStr1 := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" +#
-
-
-#+ Asignaciones inválidas +#
-#+varInt1 = 5     +#
-#+varFloat1 : 3.5 +#
-
-
-
-#+ Literales mal formateados +#
-#+ varFloat1 := 1.2.3 +#
-#+ varInt1 := 0129 +#
-#+ varStr1 := "@cadena sin cerrar +#
-
-#+ Operadores inválidos +#
-#+ varInt1 <> 2 +#
-#+ varInt2 ** 2 +#
-
-#+ Validación de cotas para enteros +#
-#+ varInt1 := 2147483648     +#  // Error: Integer constant out of bounds (must be between -2147483648 and 2147483647)
-#+ varInt1 := -2147483649    +#  // Error: Integer constant out of bounds (must be between -2147483648 and 2147483647)
-
-#+ Validación de cotas para flotantes +#
-#+ varFloat1 := 3.5E39       +#  // Error: Float constant out of bounds (must be between -3.4028235E38 and 3.4028235E38)
-#+ varFloat1 := -3.5E39      +#  // Error: Float constant out of bounds (must be between -3.4028235E38 and 3.4028235E38)
-
-
-z := 2
-x := 3.8
-areaMax := triangleAreaMaximum( [0,x; 4.0,12; 2.5,3] ; [x,0; 6,0; z,2] )
-write(areaMax)
-
-
-#+ Validaciones semánticas - Variables duplicadas +#
-#+ varInt1 : Int     +#  // Error: Variable 'varInt1' ya fue declarada previamente
-
-#+ Validaciones semánticas - Variables no declaradas +#
-#+ variableNoDeclarada := 100     +#  // Error: Variable 'variableNoDeclarada' no fue declarada
-#+ otraNoExiste := "texto"        +#  // Error: Variable 'otraNoExiste' no fue declarada
-
-#+ Validaciones semánticas - Incompatibilidad de tipos +#
-#+ varInt1 := "string"            +#  //Error: No se puede asignar String a variable Int
-#+ varStr1 := 123                 +#  // Error: No se puede asignar Int a variable String
-#+ varFloat1 := "texto"           +#  // Error: No se puede asignar String a variable Float
-
-
-
-
-
-#+ Pruebas de equalExpressions +#
-
-init {
-    varInt1, varInt2, contador : Int
-}
-
-varInt1 := 2
-varInt2 := 3
-contador := 5
-
-#+ Test 3: Usar en while - debería entrar porque 10 = 10 +#
-contador := 0
-while (equalExpressions(contador, 0))
-{
-    write("Test 3: Entrando al while con expresiones iguales")
-    contador := contador + 1
-}

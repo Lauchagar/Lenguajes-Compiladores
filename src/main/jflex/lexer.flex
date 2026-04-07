@@ -85,6 +85,10 @@ Write = "write"
 If = "if"
 While = "while"
 IsZero = "isZero"
+For = "FOR"
+To = "TO"
+Step = "STEP"
+Next = "NEXT"
 
 /* Nueva palabra reservada: función del sistema */
 TriangleAreaMaximum = "triangleAreaMaximum"
@@ -116,6 +120,10 @@ Init             = "init"
  {Not}            { return symbol(ParserSym.NOT,yytext()); }
  {While}          { return symbol(ParserSym.WHILE); }
  {IsZero}         { return symbol(ParserSym.IS_ZERO); }
+ {For}            { return symbol(ParserSym.FOR); }
+ {To}             { return symbol(ParserSym.TO); }
+ {Step}           { return symbol(ParserSym.STEP); }
+ {Next}           { return symbol(ParserSym.NEXT); }
  {TriangleAreaMaximum} { return symbol(ParserSym.TRIANGLE_AREA_MAXIMUM); }  /* NUEVO */
 
  /* IDENTIFICADOR */
