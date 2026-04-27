@@ -42,13 +42,11 @@ public class AsmCodeGenerator implements FileGenerator {
 
         writer.write(".DATA\n");
 
-        // --- CORRECCIÓN 1: Forzar punto decimal en constantes numéricas ---
         for (String op : operands) {
             String asmLabel = getValidAsmLabel(op);
 
             if (isNumberLiteral(op)) {
                 symbolTable.addToken(op, "Float", op);
-                // Si es "3", lo convertimos a "3.0" para que TASM lo guarde como Float real
                 String val = op;
                 if (!val.contains(".")) {
                     val += ".0";
@@ -106,19 +104,27 @@ public class AsmCodeGenerator implements FileGenerator {
                 continue;
             }
             
-            // --- PARCHE PARA READ (Evita que se trate como variable) ---
             if (token.equals("READ")) {
-                // Como no implementamos input, solo sacamos la variable de la pila si existe
-                // RPN suele ser: variable READ. Así que popeamos la variable.
                 if (!evalStack.isEmpty()) {
-                    // Opcional: Aquí podrías generar código para leer teclado
-                    evalStack.pop(); 
+                    String asmLabel = evalStack.pop();
+                    writer.write("    MOV BX, OFFSET " + asmLabel + "\n");
+                    writer.write("    CALL READ_INT\n\n");
                 }
                 continue;
             }
 
             if (isArithmeticOperator(token)) {
                 String op2 = evalStack.pop();
+
+                if (evalStack.isEmpty() && token.equals("-")) {
+                    String aux = generateTempName();
+                    writer.write(String.format("    FLD %s\n", op2));
+                    writer.write("    FCHS\n");
+                    writer.write(String.format("    FSTP %s\n\n", aux));
+                    evalStack.push(aux);
+                    continue;
+                }
+
                 String op1 = evalStack.pop();
                 String aux = generateTempName();
 
@@ -139,19 +145,20 @@ public class AsmCodeGenerator implements FileGenerator {
             if (token.equals(":=")) {
                 String dst = evalStack.pop();
                 String src = evalStack.pop();
-                writer.write(String.format("    FLD %s\n", src));
-                writer.write(String.format("    FSTP %s\n\n", dst));
+                if (!isStringLiteral(src)) {
+                    writer.write(String.format("    FLD %s\n", src));
+                    writer.write(String.format("    FSTP %s\n\n", dst));
+                }
                 continue;
             }
 
-            // --- CORRECCIÓN 2: Usar FCOMPP para limpiar pila ---
             if (token.equals("CMP")) {
                 String op2 = evalStack.pop();
                 String op1 = evalStack.pop();
                 writer.write(String.format("    FLD %s\n", op1));
                 writer.write(String.format("    FLD %s\n", op2));
                 writer.write("    FXCH\n");
-                writer.write("    FCOMPP\n"); // FCOMPP saca AMBOS valores de la pila
+                writer.write("    FCOMPP\n");
                 writer.write("    FSTSW ax\n");
                 writer.write("    SAHF\n\n");
                 continue;
@@ -166,13 +173,12 @@ public class AsmCodeGenerator implements FileGenerator {
                 }
             }
 
-            // PUSH DE OPERANDOS
+
             if (isNumberLiteral(token)) {
                 evalStack.push(getValidAsmLabel(token)); 
             } else if (isStringLiteral(token)) { 
                 evalStack.push(token); 
             } else {
-                // Ignoramos READ si llega aquí por error, o cualquier token desconocido
                 if (!token.equals("READ")) {
                     evalStack.push(getValidAsmLabel(token));
                 }
@@ -185,7 +191,8 @@ public class AsmCodeGenerator implements FileGenerator {
 
         writer.write("    MOV AX, 4C00h\n");
         writer.write("    INT 21h\n");
-        
+
+        writeReadProc(writer);
         writePrintProc(writer);
 
         writer.write("END START\n");
@@ -238,8 +245,14 @@ public class AsmCodeGenerator implements FileGenerator {
             } else if (token.equals("READ")) {
                 if (!dryRunStack.isEmpty()) dryRunStack.pop();
             } else if (isArithmeticOperator(token)) {
-                if (dryRunStack.size() < 2) continue;
-                dryRunStack.pop(); dryRunStack.pop();
+                if (dryRunStack.isEmpty()) continue;
+                if (dryRunStack.size() == 1 && token.equals("-")) {
+                    dryRunStack.pop();
+                } else if (dryRunStack.size() < 2) {
+                    continue;
+                } else {
+                    dryRunStack.pop(); dryRunStack.pop();
+                }
                 dryRunTempCounter++;
                 String tempName = "@T" + dryRunTempCounter;
                 temporaries.add(tempName); 
@@ -302,6 +315,60 @@ public class AsmCodeGenerator implements FileGenerator {
         }
         String label = getStringLiteralLabel(raw);
         return label + " db \"" + clean + "$\"\n";
+    }
+
+    private void writeReadProc(FileWriter writer) throws IOException {
+        writer.write("\n; --------------------------------------------------\n");
+        writer.write("; Subrutina para leer un entero del teclado\n");
+        writer.write("; BX = direccion de la variable destino (dd float)\n");
+        writer.write("; --------------------------------------------------\n");
+        writer.write("READ_INT PROC NEAR\n");
+        writer.write("    PUSH AX\n");
+        writer.write("    PUSH CX\n");
+        writer.write("    PUSH DX\n");
+        writer.write("    PUSH SI\n");
+        writer.write("    PUSH DI\n");
+        writer.write("    MOV DI, BX\n");
+        writer.write("    XOR SI, SI\n");
+        writer.write("    XOR CX, CX\n");
+        writer.write("RI_READ:\n");
+        writer.write("    MOV AH, 01h\n");
+        writer.write("    INT 21h\n");
+        writer.write("    CMP AL, 0Dh\n");
+        writer.write("    JE RI_DONE\n");
+        writer.write("    CMP AL, 2Dh\n");
+        writer.write("    JNE RI_DIGIT\n");
+        writer.write("    MOV CL, 1\n");
+        writer.write("    JMP RI_READ\n");
+        writer.write("RI_DIGIT:\n");
+        writer.write("    CMP AL, 30h\n");
+        writer.write("    JL RI_READ\n");
+        writer.write("    CMP AL, 39h\n");
+        writer.write("    JG RI_READ\n");
+        writer.write("    IMUL SI, SI, 10\n");
+        writer.write("    SUB AL, 30h\n");
+        writer.write("    XOR AH, AH\n");
+        writer.write("    ADD SI, AX\n");
+        writer.write("    JMP RI_READ\n");
+        writer.write("RI_DONE:\n");
+        writer.write("    MOV DL, 0Ah\n");
+        writer.write("    MOV AH, 02h\n");
+        writer.write("    INT 21h\n");
+        writer.write("    CMP CL, 0\n");
+        writer.write("    JE RI_STORE\n");
+        writer.write("    NEG SI\n");
+        writer.write("RI_STORE:\n");
+        writer.write("    MOV BX, DI\n");
+        writer.write("    MOV [BX], SI\n");
+        writer.write("    FILD WORD PTR [BX]\n");
+        writer.write("    FSTP DWORD PTR [BX]\n");
+        writer.write("    POP DI\n");
+        writer.write("    POP SI\n");
+        writer.write("    POP DX\n");
+        writer.write("    POP CX\n");
+        writer.write("    POP AX\n");
+        writer.write("    RET\n");
+        writer.write("READ_INT ENDP\n");
     }
 
     private void writePrintProc(FileWriter writer) throws IOException {

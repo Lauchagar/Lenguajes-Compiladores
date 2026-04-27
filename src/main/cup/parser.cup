@@ -287,7 +287,7 @@ while_statement ::= while_header:header_info OPEN_BRACE marker_M:inicio_cuerpo s
                     }
                 :};
 
-/* FOR estilo BASIC:
+/* FOR:
    FOR i = expr TO expr [STEP cte]
       sentence_list
    NEXT i
